@@ -3,126 +3,83 @@ import time
 import requests
 from playwright.sync_api import sync_playwright
 
+# Load environment variables and user credentials
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 USER_NIE = os.getenv("USER_NIE")
 USER_NAME = os.getenv("USER_NAME")
-
-# Complete list of all Spanish provinces with their official ICP codes
-SPAIN_PROVINCES = [
-    {"code": "01", "name": "Álava"},
-    {"code": "02", "name": "Albacete"},
-    {"code": "03", "name": "Alicante"},
-    {"code": "04", "name": "Almería"},
-    {"code": "05", "name": "Ávila"},
-    {"code": "06", "name": "Badajoz"},
-    {"code": "07", "name": "Illes Balears"},
-    {"code": "08", "name": "Barcelona"},
-    {"code": "09", "name": "Burgos"},
-    {"code": "10", "name": "Cáceres"},
-    {"code": "11", "name": "Cádiz"},
-    {"code": "12", "name": "Castellón"},
-    {"code": "13", "name": "Ciudad Real"},
-    {"code": "14", "name": "Córdoba"},
-    {"code": "15", "name": "A Coruña"},
-    {"code": "16", "name": "Cuenca"},
-    {"code": "17", "name": "Girona"},
-    {"code": "18", "name": "Granada"},
-    {"code": "19", "name": "Guadalajara"},
-    {"code": "20", "name": "Gipuzkoa"},
-    {"code": "21", "name": "Huelva"},
-    {"code": "22", "name": "Huesca"},
-    {"code": "23", "name": "Jaén"},
-    {"code": "24", "name": "León"},
-    {"code": "25", "name": "Lleida"},
-    {"code": "26", "name": "La Rioja"},
-    {"code": "27", "name": "Lugo"},
-    {"code": "28", "name": "Madrid"},
-    {"code": "29", "name": "Málaga"},
-    {"code": "30", "name": "Murcia"},
-    {"code": "31", "name": "Navarra"},
-    {"code": "32", "name": "Ourense"},
-    {"code": "33", "name": "Asturias"},
-    {"code": "34", "name": "Palencia"},
-    {"code": "35", "name": "Las Palmas"},
-    {"code": "36", "name": "Pontevedra"},
-    {"code": "37", "name": "Salamanca"},
-    {"code": "38", "name": "Santa Cruz de Tenerife"},
-    {"code": "39", "name": "Cantabria"},
-    {"code": "40", "name": "Segovia"},
-    {"code": "41", "name": "Sevilla"},
-    {"code": "42", "name": "Soria"},
-    {"code": "43", "name": "Tarragona"},
-    {"code": "44", "name": "Teruel"},
-    {"code": "45", "name": "Toledo"},
-    {"code": "46", "name": "Valencia"},
-    {"code": "47", "name": "Valladolid"},
-    {"code": "48", "name": "Vizcaya"},
-    {"code": "49", "name": "Zamora"},
-    {"code": "50", "name": "Zaragoza"},
-    {"code": "51", "name": "Ceuta"},
-    {"code": "52", "name": "Melilla"}
-]
+USER_PHONE = os.getenv("USER_PHONE", "647496372")
+USER_EMAIL = os.getenv("USER_EMAIL", "omarbouaali742@gmail.com")
+USER_COUNTRY = os.getenv("USER_COUNTRY", "España")
 
 def send_telegram_message(message):
+    """Send alert messages via Telegram bot with Markdown formatting"""
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": TELEGRAM_CHAT_ID,
         "text": message,
-        "parse_mode": "Markdown"
+        "parse_mode": "Markdown",
+        "disable_web_page_preview": True
     }
     try:
         requests.post(url, json=payload, timeout=10)
     except Exception as e:
-        print(f"Error sending telegram: {e}")
+        print(f"Error sending telegram message: {e}")
 
-def check_province(page, prov):
+def check_barcelona_appointment(page):
+    """Check appointment availability exclusively in Barcelona province"""
     try:
-        prov_code = prov["code"]
-        prov_name = prov["name"]
+        print("Checking Barcelona offices for Toma de huellas...")
         
-        print(f"Scanning province: {prov_name} ({prov_code})")
-        
-        # 1. Open website & select province
+        # 1. Open website & select Barcelona province (08)
         page.goto("https://icp.administracionespublicas.gob.es/icp/index.jsp", timeout=60000)
-        page.wait_for_selector("#ce", timeout=12000)
-        page.select_option("#ce", prov_code)
+        page.wait_for_selector("#ce", timeout=15000)
+        page.select_option("#ce", "08")
         page.click("#btnAceptar")
-        page.wait_for_timeout(1500)
+        page.wait_for_timeout(2000)
         
-        # 2. Select Service (Toma de huellas)
-        page.wait_for_selector("#tramite", timeout=12000)
+        # 2. Select Fingerprinting service (Toma de huellas)
+        page.wait_for_selector("#tramite", timeout=15000)
         page.select_option("#tramite", index=1)
         page.click("#btnAceptar")
-        page.wait_for_timeout(1500)
+        page.wait_for_timeout(2000)
         
-        # 3. Fill Credentials securely
+        # 3. Fill user credentials securely (NIE and Name)
         if USER_NIE and USER_NAME:
-            page.wait_for_selector("#txtIden", timeout=12000)
+            page.wait_for_selector("#txtIden", timeout=15000)
             page.fill("#txtIden", USER_NIE)
             page.fill("#txtNombreApellidos", USER_NAME)
             page.click("#btnAceptar")
-            page.wait_for_timeout(2500)
+            page.wait_for_timeout(3000)
         
-        # 4. Check status
+        # 4. Analyze page content to determine slot status
         page_content = page.content().lower()
+        
         if "no hay citas" in page_content or "en este momento" in page_content or "lo sentimos" in page_content:
-            return False
+            return False, ""
         else:
-            return True # Available!
+            # Extract office details if slots are available
+            try:
+                result_text = page.locator("body").inner_text()
+                snippet = result_text[:300].replace("\n", " ")
+            except:
+                snippet = "Available slots detected in Barcelona region!"
+            return True, snippet
             
     except Exception as e:
-        print(f"Error checking {prov['name']}: {e}")
-        return False
+        print(f"Check error: {e}")
+        return False, ""
 
-def run_all_spain_monitoring():
-    print("Starting All-Spain scanning loop...")
-    send_telegram_message("🇪🇸 *Bot started scanning ALL of Spain (52 provinces)... Let's hunt for a Cita! 🕵️‍♂️*")
+def run_barcelona_monitoring():
+    """Smart continuous checking loop (Smart Loop)"""
+    print("Starting professional Barcelona monitoring bot...")
+    send_telegram_message("🎯 *Cita Bot (Barcelona):* Bot started successfully with smart check loop (every 40s). Ready to hunt! 🚀")
     
     start_time = time.time()
     max_duration = 23 * 60  # Run for 23 minutes per GitHub Action execution
+    check_interval = 40     # Wait 40 seconds between checks
     
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -136,26 +93,30 @@ def run_all_spain_monitoring():
         page = context.new_page()
         
         while time.time() - start_time < max_duration:
-            for prov in SPAIN_PROVINCES:
-                # Break loop if approaching time limit
-                if time.time() - start_time >= max_duration:
-                    break
-                    
-                is_available = check_province(page, prov)
-                
-                if is_available:
-                    msg = f"🚨 *BINGO!* Cita available in *{prov['name']}*! Go check immediately! 🔥🏃‍♂️"
-                    print(msg)
-                    send_telegram_message(msg)
-                
-                # Brief pause between provinces to keep it safe and stable
-                time.sleep(5)
-                
-            # Rest a bit after finishing a full sweep of Spain before starting the next round
-            print("Completed full Spain sweep. Waiting before next round...")
-            time.sleep(20)
+            is_available, details = check_barcelona_appointment(page)
+            
+            if is_available:
+                official_url = "https://icp.administracionespublicas.gob.es/icp/index.jsp"
+                msg = (
+                    f"🚨 *BINGO! APPOINTMENT AVAILABLE IN BARCELONA!* 🔥\n\n"
+                    f"📄 *Office Details:* `{details[:200]}`\n\n"
+                    f"📋 *Your Quick-Copy Info (Tap any to copy):*\n"
+                    f"🆔 NIE: `{USER_NIE}`\n"
+                    f"👤 Name: `{USER_NAME}`\n"
+                    f"📞 Phone: `{USER_PHONE}`\n"
+                    f"📧 Email: `{USER_EMAIL}`\n"
+                    f"🌍 Country: `{USER_COUNTRY}`\n\n"
+                    f"👉 [Click here to open official booking site instantly]({official_url})\n\n"
+                    f"🏃‍♂️ *Hurry up and book before slots run out!*"
+                )
+                print(msg)
+                send_telegram_message(msg)
+                break
+            else:
+                print("No appointments in Barcelona. Waiting 40s...")
+                time.sleep(check_interval)
                 
         browser.close()
 
 if __name__ == "__main__":
-    run_all_spain_monitoring()
+    run_barcelona_monitoring()
