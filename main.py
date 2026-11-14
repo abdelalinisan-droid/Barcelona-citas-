@@ -18,7 +18,7 @@ def send_telegram_message(message):
         "parse_mode": "Markdown"
     }
     try:
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=10)
         print(f"Telegram response status: {response.status_code}")
     except Exception as e:
         print(f"Error sending telegram: {e}")
@@ -32,35 +32,38 @@ def check_and_book():
         page = browser.new_page()
         
         try:
-            # 1. Open website & select Barcelona
+            # 1. Open official website & select Barcelona
+            print("Navigating to ICP website...")
             page.goto("https://icp.administracionespublicas.gob.es/icp/index.jsp", timeout=60000)
-            page.wait_for_selector("#ce", timeout=15000)
+            
+            print("Selecting province Barcelona...")
+            page.wait_for_selector("#ce", timeout=20000)
             page.select_option("#ce", "08")
             page.click("#btnAceptar")
-            page.wait_for_load_state("networkidle")
+            page.wait_for_timeout(5000) # Safe wait avoiding networkidle freeze
+            
             send_telegram_message("✅ *Step 1:* Province Barcelona selected successfully!")
             
             # 2. Select Service (Toma de huellas)
-            try:
-                page.wait_for_selector("#tramite", timeout=10000)
-                page.select_option("#tramite", index=1)
-            except:
-                # Fallback selector if id differs
-                page.select_option("select", index=1)
-                
+            print("Selecting service...")
+            page.wait_for_selector("#tramite", timeout=20000)
+            page.select_option("#tramite", index=1)
             page.click("#btnAceptar")
-            page.wait_for_load_state("networkidle")
+            page.wait_for_timeout(5000)
+            
             send_telegram_message("✅ *Step 2:* Service selected successfully!")
             
             # 3. Fill Credentials securely
             if USER_NIE and USER_NAME:
-                page.wait_for_selector("#txtIden", timeout=10000)
+                print("Filling credentials...")
+                page.wait_for_selector("#txtIden", timeout=20000)
                 page.fill("#txtIden", USER_NIE)
                 page.fill("#txtNombreApellidos", USER_NAME)
+                
                 send_telegram_message("👤 *Step 3:* Credentials (NIE & Name) filled securely!")
             
         except Exception as e:
-            err_msg = f"❌ *Detailed Error:* {str(e)[:150]}"
+            err_msg = f"❌ *Error:* {str(e)[:150]}"
             print(err_msg)
             send_telegram_message(err_msg)
         finally:
