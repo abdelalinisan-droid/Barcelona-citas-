@@ -24,26 +24,34 @@ def send_telegram_message(message):
     except Exception as e:
         print(f"Error sending telegram: {e}")
 
-def check_icp_barcelona():
+def check_and_book():
     print("Starting auto-booking check for Barcelona...")
-    send_telegram_message("🤖 *Bot is running successfully!*\n👤 User credentials loaded for auto-booking.\n📍 Monitoring Barcelona appointments...")
+    send_telegram_message("🤖 *Bot started successfully!*\n👤 Credentials loaded securely.\n📍 Accessing Barcelona appointment system...")
     
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         
         try:
-            # Access the official Spanish public administration appointment website
+            # 1. Open the official Spanish public administration appointment website
             page.goto("https://icp.administracionespublicas.gob.es/icp/index.jsp", timeout=60000)
             
-            # Verify secure loading of credentials
-            if USER_NIE and USER_NAME:
-                print("User credentials loaded securely for auto-booking.")
-                
+            # 2. Select Province (Barcelona = 08)
+            page.wait_for_selector("#ce", timeout=10000)
+            page.select_option("#ce", "08")
+            
+            # Click Accept button
+            page.click("#btnAceptar")
+            page.wait_for_load_state("networkidle")
+            
+            send_telegram_message("✅ *Step 1 Completed:* Province Barcelona selected successfully!")
+            
         except Exception as e:
-            print(f"An error occurred during execution: {e}")
+            error_msg = f"❌ *Error during execution:* {str(e)}"
+            print(error_msg)
+            send_telegram_message(error_msg)
         finally:
             browser.close()
 
 if __name__ == "__main__":
-    check_icp_barcelona()
+    check_and_book()
