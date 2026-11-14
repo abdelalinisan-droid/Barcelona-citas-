@@ -1,10 +1,5 @@
 import os
 import requests
-
-# Automatically install playwright browser binaries if missing in GitHub runner
-print("Ensuring Playwright chromium is installed...")
-os.system("playwright install chromium")
-
 from playwright.sync_api import sync_playwright
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -29,12 +24,10 @@ def send_telegram_message(message):
         print(f"Error sending telegram: {e}")
 
 def check_and_book():
-    print("Starting auto-booking check for Barcelona...")
-    send_telegram_message("🤖 *Bot started execution & installing browser...*")
+    print("Starting automated appointment check for Barcelona...")
     
     with sync_playwright() as p:
         try:
-            print("Launching browser...")
             browser = p.chromium.launch(
                 headless=True,
                 args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
@@ -46,32 +39,40 @@ def check_and_book():
             )
             page = context.new_page()
             
-            print("Navigating to ICP website...")
-            response = page.goto("https://icp.administracionespublicas.gob.es/icp/index.jsp", timeout=60000)
-            send_telegram_message(f"🌐 *Page loaded successfully:* Status {response.status}")
-            
-            print("Selecting province Barcelona...")
+            # 1. Open official website & select Barcelona
+            page.goto("https://icp.administracionespublicas.gob.es/icp/index.jsp", timeout=60000)
             page.wait_for_selector("#ce", timeout=25000)
             page.select_option("#ce", "08")
             page.click("#btnAceptar")
-            page.wait_for_timeout(5000)
-            send_telegram_message("✅ *Step 1:* Province Barcelona selected successfully!")
+            page.wait_for_timeout(3000)
             
             # 2. Select Service (Toma de huellas)
-            print("Selecting service...")
             page.wait_for_selector("#tramite", timeout=25000)
             page.select_option("#tramite", index=1)
             page.click("#btnAceptar")
-            page.wait_for_timeout(5000)
-            send_telegram_message("✅ *Step 2:* Service selected successfully!")
+            page.wait_for_timeout(3000)
             
             # 3. Fill Credentials securely
             if USER_NIE and USER_NAME:
-                print("Filling credentials...")
                 page.wait_for_selector("#txtIden", timeout=25000)
                 page.fill("#txtIden", USER_NIE)
                 page.fill("#txtNombreApellidos", USER_NAME)
-                send_telegram_message("👤 *Step 3:* Credentials (NIE & Name) filled securely!")
+                
+                # Click submit button to check appointments page
+                page.click("#btnAceptar")
+                page.wait_for_timeout(5000)
+            
+            # 4. Check appointment availability on the resulting page
+            page_content = page.content().lower()
+            
+            if "no hay citas" in page_content or "en este momento" in page_content or "lo sentimos" in page_content:
+                print("Status: No appointments available right now.")
+                # We don't spam Telegram when there are no appointments, 
+                # but you can uncomment the line below if you want a notification every time it checks:
+                # send_telegram_message("🔍 *Bot checked:* No appointments available currently.")
+            else:
+                print("ALERT: Appointments might be available!")
+                send_telegram_message("🚨 *URGENT:* Cita available or page changed in Barcelona! Check immediately! 🔥")
             
             browser.close()
             
