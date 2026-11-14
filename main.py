@@ -41,5 +41,3 @@ def check_icp_barcelona():
 
 if __name__ == "__main__":
   check_icp_barcelona()
-# أضف هذا السطر في نهاية ملف main.py لتلقي رسالة التأكيد التجريبية فوراً
-send_telegram_message("✅ تم الاتصال بنجاح! النظام يراقب مواعيد برشلونة الآن.")
