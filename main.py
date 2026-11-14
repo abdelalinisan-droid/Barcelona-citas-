@@ -2,7 +2,6 @@ import os
 import requests
 from playwright.sync_api import sync_playwright
 
-# Read secure environment variables safely
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 USER_NIE = os.getenv("USER_NIE")
@@ -20,53 +19,45 @@ def send_telegram_message(message):
     }
     try:
         response = requests.post(url, json=payload)
-        print(f"Telegram response: {response.status_code}")
+        print(f"Telegram response status: {response.status_code}")
     except Exception as e:
         print(f"Error sending telegram: {e}")
 
 def check_and_book():
     print("Starting auto-booking check for Barcelona...")
+    send_telegram_message("🤖 *Bot started execution...*")
     
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         
         try:
-            # 1. Open the official Spanish public administration appointment website
+            # 1. Open website & select Barcelona
             page.goto("https://icp.administracionespublicas.gob.es/icp/index.jsp", timeout=60000)
-            
-            # 2. Select Province (Barcelona = 08)
-            page.wait_for_selector("#ce", timeout=10000)
+            page.wait_for_selector("#ce", timeout=15000)
             page.select_option("#ce", "08")
             page.click("#btnAceptar")
             page.wait_for_load_state("networkidle")
-            
             send_telegram_message("✅ *Step 1:* Province Barcelona selected successfully!")
             
-            # 3. Select Service (Toma de huellas / Fingerprints)
-            # Note: Selectors can be adjusted based on the specific dropdown option value for Toma de huellas
-            page.wait_for_selector("#tramite", timeout=10000)
-            # Usually, Toma de huellas corresponds to a specific value like policia or certinicados, let's select by label or value
-            page.select_option("#tramite", index=1) # Or specific value
+            # 2. Select Service (Toma de huellas)
+            page.wait_for_selector("#tramite", timeout=15000)
+            page.select_option("#tramite", index=1)
             page.click("#btnAceptar")
             page.wait_for_load_state("networkidle")
-            
             send_telegram_message("✅ *Step 2:* Service selected successfully!")
             
-            # 4. Fill User Credentials securely
+            # 3. Fill Credentials securely
             if USER_NIE and USER_NAME:
-                print("Filling user credentials...")
-                # Filling NIE / Document number
+                page.wait_for_selector("#txtIden", timeout=15000)
                 page.fill("#txtIden", USER_NIE)
-                # Filling Name and Surname
                 page.fill("#txtNombreApellidos", USER_NAME)
-                
-                send_telegram_message(f"👤 *Credentials Loaded:* NIE and Name filled securely for auto-booking.")
+                send_telegram_message("👤 *Step 3:* Credentials (NIE & Name) filled securely!")
             
         except Exception as e:
-            error_msg = f"❌ *Error during execution:* {str(e)}"
-            print(error_msg)
-            send_telegram_message(error_msg)
+            err_msg = f"❌ *Execution Error:* {str(e)}"
+            print(err_msg)
+            send_telegram_message(err_msg)
         finally:
             browser.close()
 
