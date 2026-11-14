@@ -26,7 +26,6 @@ def send_telegram_message(message):
 
 def check_and_book():
     print("Starting auto-booking check for Barcelona...")
-    send_telegram_message("🤖 *Bot started successfully!*\n👤 Credentials loaded securely.\n📍 Accessing Barcelona appointment system...")
     
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -39,12 +38,30 @@ def check_and_book():
             # 2. Select Province (Barcelona = 08)
             page.wait_for_selector("#ce", timeout=10000)
             page.select_option("#ce", "08")
-            
-            # Click Accept button
             page.click("#btnAceptar")
             page.wait_for_load_state("networkidle")
             
-            send_telegram_message("✅ *Step 1 Completed:* Province Barcelona selected successfully!")
+            send_telegram_message("✅ *Step 1:* Province Barcelona selected successfully!")
+            
+            # 3. Select Service (Toma de huellas / Fingerprints)
+            # Note: Selectors can be adjusted based on the specific dropdown option value for Toma de huellas
+            page.wait_for_selector("#tramite", timeout=10000)
+            # Usually, Toma de huellas corresponds to a specific value like policia or certinicados, let's select by label or value
+            page.select_option("#tramite", index=1) # Or specific value
+            page.click("#btnAceptar")
+            page.wait_for_load_state("networkidle")
+            
+            send_telegram_message("✅ *Step 2:* Service selected successfully!")
+            
+            # 4. Fill User Credentials securely
+            if USER_NIE and USER_NAME:
+                print("Filling user credentials...")
+                # Filling NIE / Document number
+                page.fill("#txtIden", USER_NIE)
+                # Filling Name and Surname
+                page.fill("#txtNombreApellidos", USER_NAME)
+                
+                send_telegram_message(f"👤 *Credentials Loaded:* NIE and Name filled securely for auto-booking.")
             
         except Exception as e:
             error_msg = f"❌ *Error during execution:* {str(e)}"
