@@ -21,7 +21,8 @@ def send_telegram_message(message):
 
 def check_icp_barcelona():
   print("Starting ICP Barcelona check...")
-send_telegram_message("✅ تم الاتصال بنجاح! النظام يراقب مواعيد برشلونة الآن.")
+  send_telegram_message("✅ Bot started successfully and monitoring Barcelona appointments!")
+
   with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
     page = browser.new_page()
