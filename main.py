@@ -22,11 +22,6 @@ def send_telegram_message(message):
 def check_icp_barcelona():
   print("Starting ICP Barcelona check...")
 
-  # هذا هو السطر المهم الذي سيقوم بإرسال الرسالة التجريبية فوراً عند البدء
-  send_telegram_message(
-      "🤖 Bot started successfully and checking Barcelona appointments now!"
-  )
-
   with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
     page = browser.new_page()
