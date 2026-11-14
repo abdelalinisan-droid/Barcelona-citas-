@@ -41,21 +41,26 @@ def check_and_book():
             send_telegram_message("✅ *Step 1:* Province Barcelona selected successfully!")
             
             # 2. Select Service (Toma de huellas)
-            page.wait_for_selector("#tramite", timeout=15000)
-            page.select_option("#tramite", index=1)
+            try:
+                page.wait_for_selector("#tramite", timeout=10000)
+                page.select_option("#tramite", index=1)
+            except:
+                # Fallback selector if id differs
+                page.select_option("select", index=1)
+                
             page.click("#btnAceptar")
             page.wait_for_load_state("networkidle")
             send_telegram_message("✅ *Step 2:* Service selected successfully!")
             
             # 3. Fill Credentials securely
             if USER_NIE and USER_NAME:
-                page.wait_for_selector("#txtIden", timeout=15000)
+                page.wait_for_selector("#txtIden", timeout=10000)
                 page.fill("#txtIden", USER_NIE)
                 page.fill("#txtNombreApellidos", USER_NAME)
                 send_telegram_message("👤 *Step 3:* Credentials (NIE & Name) filled securely!")
             
         except Exception as e:
-            err_msg = f"❌ *Execution Error:* {str(e)}"
+            err_msg = f"❌ *Detailed Error:* {str(e)[:150]}"
             print(err_msg)
             send_telegram_message(err_msg)
         finally:
