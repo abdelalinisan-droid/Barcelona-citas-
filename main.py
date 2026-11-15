@@ -73,9 +73,8 @@ def check_barcelona_appointment(page):
         return False, ""
 
 def run_barcelona_monitoring():
-    """Smart continuous checking loop (Smart Loop)"""
-    print("Starting professional Barcelona monitoring bot...")
-    send_telegram_message("🎯 *Cita Bot (Barcelona):* Bot started successfully with smart check loop (every 40s). Ready to hunt! 🚀")
+    """Smart continuous checking loop (Silent Background Mode)"""
+    print("Starting professional Barcelona monitoring bot in silent mode...")
     
     start_time = time.time()
     max_duration = 23 * 60  # Run for 23 minutes per GitHub Action execution
