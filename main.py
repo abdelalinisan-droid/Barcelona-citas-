@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import requests
 from playwright.sync_api import sync_playwright
 
@@ -61,7 +61,6 @@ def check_barcelona_appointment(page):
         if "no hay citas" in page_content or "en este momento" in page_content or "lo sentimos" in page_content:
             return False, ""
         else:
-            # Extract office details if slots are available
             try:
                 result_text = page.locator("body").inner_text()
                 snippet = result_text[:300].replace("\n", " ")
@@ -74,14 +73,20 @@ def check_barcelona_appointment(page):
         return False, ""
 
 def run_barcelona_monitoring():
-    """Smart continuous checking loop (Silent Background Mode)"""
-    print("Starting professional Barcelona monitoring bot in silent mode...")
+    """Smart continuous checking loop"""
+    print("Starting professional Barcelona monitoring bot...")
+    
+    # توقيت إسبانيا المحلي (CET = UTC+1)
+    spain_tz = timezone(timedelta(hours=1))
+    now_spain = datetime.now(spain_tz)
+    
+    # إرسال رسالة تأكيد فورية عند بداية كل دورة تشغيل (مرة واحدة في الجلسة)
+    start_msg = f"🟢 *Bot Active:* Monitoring ICP Barcelona appointments. (Spain Time: {now_spain.strftime('%H:%M')})"
+    send_telegram_message(start_msg)
     
     start_time = time.time()
-    max_duration = 23 * 60  # Run for 23 minutes per GitHub Action execution
+    max_duration = 23 * 60  # Run for 23 minutes per execution
     check_interval = 40     # Wait 40 seconds between checks
-    
-    last_hour_notified = -1 # تتبع آخر ساعة تم إرسال رسالة التذكير فيها
     
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -95,13 +100,6 @@ def run_barcelona_monitoring():
         page = context.new_page()
         
         while time.time() - start_time < max_duration:
-            # فحص الوقت الحالي لإرسال رسالة تذكيرية كل رأس ساعة
-            now = datetime.now()
-            if now.minute <= 1 and now.hour != last_hour_notified:
-                test_msg = f"🟢 *Bot Status:* The monitoring script is active and running smoothly in the background. ({now.strftime('%H:%M')})"
-                send_telegram_message(test_msg)
-                last_hour_notified = now.hour
-
             is_available, details = check_barcelona_appointment(page)
             
             if is_available:
