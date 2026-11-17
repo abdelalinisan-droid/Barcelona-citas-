@@ -73,20 +73,19 @@ def check_barcelona_appointment(page):
         return False, ""
 
 def run_barcelona_monitoring():
-    """Smart continuous checking loop"""
-    print("Starting professional Barcelona monitoring bot...")
+    """Smart continuous checking loop with high frequency"""
+    print("Starting professional Barcelona monitoring bot (High Speed Mode)...")
     
     # توقيت إسبانيا المحلي (CET = UTC+1)
     spain_tz = timezone(timedelta(hours=1))
     now_spain = datetime.now(spain_tz)
     
-    # إرسال رسالة تأكيد فورية عند بداية كل دورة تشغيل (مرة واحدة في الجلسة)
-    start_msg = f"🟢 *Bot Active:* Monitoring ICP Barcelona appointments. (Spain Time: {now_spain.strftime('%H:%M')})"
+    start_msg = f"🟢 *Bot Active (Fast Mode):* Monitoring ICP Barcelona appointments. (Spain Time: {now_spain.strftime('%H:%M')})"
     send_telegram_message(start_msg)
     
     start_time = time.time()
-    max_duration = 23 * 60  # Run for 23 minutes per execution
-    check_interval = 40     # Wait 40 seconds between checks
+    max_duration = 28 * 60  # زيادة مدة الجلسة إلى 28 دقيقة لتقليل فجوات التوقف
+    check_interval = 25     # تقليص وقت الانتظار بين الفحوصات إلى 25 ثانية فقط
     
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -120,7 +119,7 @@ def run_barcelona_monitoring():
                 send_telegram_message(msg)
                 break
             else:
-                print("No appointments in Barcelona. Waiting 40s...")
+                print(f"No appointments in Barcelona. Waiting {check_interval}s...")
                 time.sleep(check_interval)
                 
         browser.close()
