@@ -1,5 +1,6 @@
 import os
 import time
+from datetime import datetime
 import requests
 from playwright.sync_api import sync_playwright
 
@@ -80,6 +81,8 @@ def run_barcelona_monitoring():
     max_duration = 23 * 60  # Run for 23 minutes per GitHub Action execution
     check_interval = 40     # Wait 40 seconds between checks
     
+    last_hour_notified = -1 # تتبع آخر ساعة تم إرسال رسالة التذكير فيها
+    
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
@@ -92,6 +95,13 @@ def run_barcelona_monitoring():
         page = context.new_page()
         
         while time.time() - start_time < max_duration:
+            # فحص الوقت الحالي لإرسال رسالة تذكيرية كل رأس ساعة
+            now = datetime.now()
+            if now.minute <= 1 and now.hour != last_hour_notified:
+                test_msg = f"🟢 *Bot Status:* The monitoring script is active and running smoothly in the background. ({now.strftime('%H:%M')})"
+                send_telegram_message(test_msg)
+                last_hour_notified = now.hour
+
             is_available, details = check_barcelona_appointment(page)
             
             if is_available:
