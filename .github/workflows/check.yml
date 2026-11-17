@@ -2,8 +2,8 @@ name: Check ICP Barcelona
 
 on:
   schedule:
-    - cron: '*/1 * * * *'  # فحص كل دقيقة لتسريع رصد المواعيد
-  workflow_dispatch:      # يتيح لك زر التشغيل اليدوي الفوري من متصفحك في أي وقت
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
   check-appointment:
